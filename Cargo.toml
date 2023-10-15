@@ -6,3 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { "version" = "4.4", features = ["derive"] }
+anyhow = "1.0"
+bladeink = "0.9"
+rand = "0.8"
+
+[[example]]
+name = "the_intercept_cli"
+path = "./examples/the_intercept_cli.rs"
