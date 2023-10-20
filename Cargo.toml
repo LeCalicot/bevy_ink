@@ -10,6 +10,8 @@ clap = { "version" = "4.4", features = ["derive"] }
 anyhow = "1.0"
 bladeink = "0.9"
 rand = "0.8"
+bevy = "0.11"
+bevy_egui = "0.22.0"
 
 [[example]]
 name = "the_intercept_cli"
