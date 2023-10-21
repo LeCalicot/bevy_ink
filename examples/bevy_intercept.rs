@@ -2,6 +2,12 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use bladeink::story_callbacks::{ErrorHandler, ErrorType};
 use bladeink::{choice::Choice, story::Story};
+use std::cell::RefCell;
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, States)]
 enum GameState {
@@ -44,13 +50,50 @@ fn ui_example_system(mut contexts: EguiContexts, mut ui_state: ResMut<UiState>) 
 }
 
 #[derive(Resource)]
-struct InkStory{
+struct InkStory {
     story: Story,
-};
+}
 
 impl Default for InkStory {
     fn default() -> Self {
-        InkStory {}
+        let json_string = get_json_string("assets/TheIntercept.ink.json")?;
+
+        // REMOVE BOM if exits
+        let json_string_without_bom = json_string.strip_prefix('\u{feff}').unwrap_or(&json_string);
+
+        Self {
+            story: Arc::new(Mutex::new(Story::new(json_string_without_bom)?)),
+        }
+    }
+}
+
+fn get_json_string(filename: &str) -> Result<String, Box<dyn Error>> {
+    let path = Path::new(filename);
+    let json = fs::read_to_string(path)
+        .with_context(|| format!("could not read file `{}`", path.to_string_lossy()))?;
+
+    Ok(json)
+}
+
+struct EHandler {
+    pub should_terminate: bool,
+}
+
+impl EHandler {
+    pub fn new() -> Rc<RefCell<EHandler>> {
+        Rc::new(RefCell::new(EHandler {
+            should_terminate: false,
+        }))
+    }
+}
+
+impl ErrorHandler for EHandler {
+    fn error(&mut self, message: &str, error_type: ErrorType) {
+        println!("{}", message);
+
+        if error_type == ErrorType::Error {
+            self.should_terminate = true;
+        }
     }
 }
 
@@ -64,7 +107,11 @@ impl Plugin for InkStoryPlugin {
     }
 }
 
-fn start_story(story: ResMut<InkStory>, mut next_state: ResMut<NextState<GameState>>) {
+fn start_story(
+    mut commands: Commands,
+    mut stories: ResMut<Assets<InkStory>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
     let json_string = get_json_string("assets/TheIntercept.ink.json")?;
 
     // REMOVE BOM if exits
@@ -76,7 +123,11 @@ fn start_story(story: ResMut<InkStory>, mut next_state: ResMut<NextState<GameSta
 
     let mut end = false;
 
+    let tmp_story = stories.add(story);
+
+    commands.spawn((tmp_story,));
+
     next_state.set(GameState::Playing);
 }
 
-fn play_story(story: ResMut<InkStory>) {}
+fn play_story() {}
